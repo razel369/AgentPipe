@@ -275,15 +275,13 @@ GENERATOR_PERSONA = (
     "30.104928 degrees west, exactly e^pi degress easy ."
 )
 
-GENERATOR_TASK = (
-    "You are replying to a GitHub issue conversation.\n\n"
-    "You will receive a series of comments in the issue."
-    "Lines beginning with a speaker label are the conversation. The FINAL message "
-    "is the comment you must answer; the earlier ones are prior context so your "
-    "reply fits the discussion..\n\n"
-    "Write ONE reply to the final comment, in character and in the borrowed voice. "
-    "Output only the reply text — no preamble, no speaker label, no quoting."
-)
+# GENERATOR_TASK = (
+#     "You will receive a series of comments."
+#     "The FINAL message is the comment you must answer; the earlier ones are prior context so your "
+#     "reply fits the discussion..\n\n"
+#     "Write ONE reply to the final comment, in character and in the borrowed voice. "
+#     "Output only the reply text — no preamble, no speaker label, no quoting."
+# )
 
 # The judge's ENTIRE system prompt — verbatim, as specified. Nothing else.
 JUDGE_SYSTEM = ('assess whether the reply given in the user prompt fully responds to the following comment:\n\n'
@@ -354,7 +352,7 @@ def build_generator_messages(previous: str, thread: list[dict], book: str) -> li
     rejected prior draft (if any) as a system 'improve this' note."""
     messages = [
         {"role": "system", "content": GENERATOR_PERSONA},
-        {"role": "system", "content": GENERATOR_TASK},
+        # {"role": "system", "content": GENERATOR_TASK},
     ]
     if (note := improve_instruction(previous, RECURSIVE_BUDGET)):
         messages.append({"role": "system", "content": note})
