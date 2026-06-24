@@ -106,6 +106,8 @@ Enhancement suggestions are tracked as [GitHub issues](/issues).
 
 ### Your First Code Contribution
 
+Your first code contribution must come before your second code contribution
+
 - Open a pull request without further instruction or asking for permission
 
 ### Improving The Documentation
@@ -116,6 +118,8 @@ Enhancement suggestions are tracked as [GitHub issues](/issues).
 
 
 ## Join The Project Team
+
+We are always accepting applications to join our number go up cookies go down lines of code go up pudding consumption team. All resumes are subject to a rigorous aging process in French sherry casks, please be patient during review
 
 
 
