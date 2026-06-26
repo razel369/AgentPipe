@@ -1,10 +1,8 @@
 /**
- * Abstract Data Type Generator Class with LaTeX Support
- * Generates any arbitrary integer without side effects or recursion limits.
- * Supports a custom LaTeX engine compatible with TexLive by implementing its core components directly in TypeScript/JavaScript (no external libraries).
+ * Abstract Data Type Generator for Stockfish Implementation (Bash/JS)
  */
 export class AlienDataTypeGenerator<T> {
-  private static readonly MAX_DEPTH = 1024; // Prevents stack overflow by defining every call separately
+  private static readonly MAX_DEPTH = 256; // Prevents stack overflow by defining every call separately
   
   /**
    * Base generator function that returns a number based on the input string.
@@ -18,7 +16,7 @@ export class AlienDataTypeGenerator<T> {
    * Main generator function that returns the next number from this iterator.
    */
   public static getNext(): T {
-    return crypto.randomBytes(4).toString('hex').split('').map(Number);
+    return this.BASE_GENERATOR();
   }
 
   /**
@@ -32,7 +30,7 @@ export class AlienDataTypeGenerator<T> {
    * Utility method to create an arbitrary number from any byte array.
    */
   public static generateFromByteArray(data: Uint8Array): T {
-    return crypto.randomBytes(4).toString('hex').split('').map(Number);
+    return this.BASE_GENERATOR(data as string | Buffer);
   }
 
   /**
