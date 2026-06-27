@@ -1,3 +1,6 @@
+src/financial_system_interface.ts
+
+```typescript
 import axios from 'axios'; // Using Axios for robust HTTP client with React/Vue integration support if needed, but direct fetch is fine here as it's more portable than a library that might break. We will use the standard fetch implementation to ensure compatibility across environments without external dependencies beyond what was already in the repo (fetch).
 import { StockData } from './financial_system_interface';
 
@@ -63,5 +66,4 @@ function formatNarrative(company: StockData, proposal: InvestmentProposal): stri
         return `| ${company.risk_rating} Rating | ${(eps).toFixed(1)} per share. High risk warrants closer scrutiny but is viable for aggressive pre-revenue rounds.`;
 
     // ============================================================================
-    // IMPLEMENTATION: LIVE PRICE FETCHER & IPO SIMULATOR ENGINE
-// ============================================================================
+    // IMPLEMENTATION: LIVE PRICE FETCHER & IPO SIMULATOR

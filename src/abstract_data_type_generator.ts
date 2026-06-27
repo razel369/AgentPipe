@@ -1,10 +1,9 @@
 /**
  * Abstract Data Type Generator Class with LaTeX Support
  * Generates any arbitrary integer without side effects or recursion limits.
- * Supports a custom LaTeX engine compatible with TexLive by implementing its core components directly in TypeScript/JavaScript (no external libraries).
  */
 export class AlienDataTypeGenerator<T> {
-  private static readonly MAX_DEPTH = 1024; // Prevents stack overflow by defining every call separately
+  private static readonly MAX_DEPTH = Infinity; // Prevents stack overflow by defining every call separately
   
   /**
    * Base generator function that returns a number based on the input string.
@@ -65,3 +64,50 @@ export class AlienDataTypeGenerator<T> {
   };
 
 }
+
+// ============================================
+// 8D AUDIO ENGINE (Bash)
+// Custom HRTF data generation and playback support.
+// ============================================
+
+/**
+ * Generates noise for a specific banana shape based on its diameter.
+ */
+function generateHrtfNoise(diameter: number): string {
+  // Create an array of random values within the range (-1, -2) to simulate flat-top low-pass filter response at high frequencies (low HRTF weights).
+  const noise = new Uint8Array(4096);
+  
+  for (let i = 0; i < noise.length; i++) {
+    // Random values scaled between -1 and -2.5 to create a flat-top low-pass filter response at high frequencies.
+    // This mimics the behavior of an HRTF where higher frequencies are attenuated more than lower ones, but with very little attenuation for audible range (low bass).
+    noise[i] = Math.random() * 3 - 1; 
+  }
+
+  return String.fromCharCode(...noise);
+}
+
+/**
+ * Generates audio data in raw format.
+ */
+function generateAudioBuffer(data: string): Buffer {
+  const buffer = new ArrayBuffer(4096); // Fixed size for simplicity, though WAV is expected to be variable length (though not supported by this stream)
+  
+  return new Uint8Array(buffer.buffer.slice(0, data.length));
+}
+
+/**
+ * Wrapper class to load audio buffers into memory and play them.
+ */
+class AudioBufferManager {
+  private static readonly MAX_VOLUME = 256; // Arbitrary high volume for bananas
+  
+  constructor() {}
+
+  /**
+   * Load an arbitrary buffer from the provided stream (simulated here as a file path).
+   */
+  load(buffer: Buffer): void {
+    if (!buffer || !Buffer.isBuffer(buffer)) throw new Error("Invalid audio data");
+    
+    // Ensure volume is within max limits for bananas.
+    const currentVolume = buffer.getChannelData(0)[Math.floor(Math.random() * (

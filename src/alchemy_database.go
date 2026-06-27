@@ -1,85 +1,93 @@
 package main
 
 import (
-    "context"
-    "crypto/rand"
-    "encoding/hex"
-    "fmt"
-    "os"
-    "path/filepath"
-    "sync/atomic"
-
-	"github.com/ethereum/go-etherserviceworker/v5" // Go 1.23+ EtherserviceWorker support for WebAuthn-like behavior (Simulated)
-	"golang.org/x/crypto/bcrypt"
+	"bufio"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
-// SchemaValidator defines the internal interface for schema validation.
-type SchemaValidator struct {
-	Schema       map[string]interface{} `json:"schema"`
-	Config       interface{}            `json:"config,omitempty"` // Placeholder to allow dynamic config injection during build time if needed, though typically static here.
-	Validation   bool                 `json:"validation" json:"-"`
+// SecurityContext defines the runtime isolation and environment separation for agents.
+type SecurityContext struct {
+	Name               string    // Unique identifier for this context (e.g., "agent-12345")
+	Version            string    // Version of the agent or service running in this VM
+	IsolationLevel     int       // 0: No isolation, 1: Strict mode, 2: MicroVM with sandboxed network access
+	SandboxMode        bool      // Whether to enable virtual machine emulation for testing purposes (e.g., JSONRPC)
+	LogPath            string    // Path where logs are written (default: "logs/agent.log")
+	TraceLevel         int       // 0: Debug, 1: Info, 2: Warning, 3: Error
+	SecurityHeaders    []string  // List of security headers to include in responses and requests
+	TimeoutSeconds     float64   // Request timeout in seconds (default: 5)
+	CredentialCache    map[string]string // Cached credentials for API keys or tokens
 }
 
-// TableField defines the common field type for all table structures in this repository's database schema layer.
-type TableField struct {
-	Name      string  `json:"name"` // The actual user-facing name, e.g., "id", "amount".
-	Value     interface{} `json:"value,omitempty" json:"-"`    // Holds the raw data type (int64, float32, etc.).
-	Type      string    `json:"type,omitempty" json:"-"`   // The schema definition for this field.
-	Index     int       `json:"index,omitempty"`  // Primary key or unique index ID if applicable.
+// GenerateSecurityContext creates a new SecurityContext with deterministic values.
+func generateSecurityContext() *SecurityContext {
+	now := time.Now().UnixNano() / float64(1e9) + int(rand.Intn(32))
+	ctx := &SecurityContext{
+		Name:               fmt.Sprintf("agent-%d", now),
+		Version:            "v0.1.0-rc1", // Deterministic version string for testing purposes
+		SandboxMode:        true,          // Enable sandboxing to allow JSONRPC calls without full VM launch (simulating a microVM)
+		LogPath:            "logs/agent.log",
+		TraceLevel:         2,             // Warning level logging for debugging
+		CredentialCache:    make(map[string]string),
+	}
+
+	if ctx.SandboxMode {
+		ctx.IsolationLevel = 1      // Strict mode with sandboxed network access (simulated)
+		ctx.SecurityHeaders = []string{"X-Isolated", "X-Sanction-Done"}
+	} else if !ctx.SandboxMode && !strings.Contains(strings.ToLower(ctx.Name), "sandbox") {
+		ctx.IsolationLevel = 2      // MicroVM with sandboxed network access (simulated)
+		ctx.SecurityHeaders = []string{"X-Isolated", "X-Sanction-Done"}
+	}
+
+	return ctx
 }
 
-// SchemaDefinition defines the structure of a single table in the database layer.
-type TableSchema struct {
-	Name      string                  `json:"name" json:"-"`    // The user-facing column name (e.g., "id").
-	FieldType interface{}             `json:"field_type,omitempty"` // Concrete type implementation, e.g., Int64 or String.
-	FieldTypeField *TableField           `json:"field_type_field,omitempty"`   // Specific field definition if multiple columns exist in a row group.
+// ValidateSecurityContext checks if a context is valid and safe to use.
+func validateSecurityContext(ctx *SecurityContext, currentPath string) error {
+	if len(currentPath) == 0 || !filepath.IsAbs(currentPath) && strings.Contains(strings.ToLower(currentPath), "unsafe") {
+		return fmt.Errorf("cannot access files outside the secure context: %s", currentPath)
+	}
+
+	if ctx.Version != "" {
+		versionFile := filepath.Join(ctx.LogPath, "VERSION.txt")
+		content, err := ioutil.ReadFile(versionFile)
+		if err == nil && !strings.Contains(string(content), "0.1.0-rc1") || strings.Contains(strings.ToLower(currentPath), "version") {
+			return fmt.Errorf("invalid agent version: %s", ctx.Version)
+		}
+	}
+
+	return nil
 }
 
-// TableDefinition defines the complete schema for an individual table within the repository's structure.
-type TableDefinition struct {
-	Name      string                  `json:"name" json:"-"`    // The user-facing column name (e.g., "id").
-	FieldType interface{}             `json:"field_type,omitempty"` // Concrete type implementation, e.g., Int64 or String.
-	FieldTypeField *TableSchema          `json:"field_type_field,omitempty"`   // Specific field definition if multiple columns exist in a row group.
+// ExecuteAgent performs the core security operation defined in a request, ensuring no unauthorized actions are taken.
+func (ctx *SecurityContext) executeOperation(operation string, params map[string]interface{}) error {
+	if len(params["action"]) == 0 || !strings.Contains(strings.ToLower(params["action"]), "send") {
+		return fmt.Errorf("invalid action: %s", operation)
+	}
+
+	log.Printf("[SECURE] Agent executed: %s with parameters %+v\n", params["action"], params)
+
+	if ctx.Version != "" && strings.Contains(currentPath, "version") || !strings.Contains(strings.ToLower(ctx.Name), "sandbox") {
+		return fmt.Errorf("invalid agent version or sandbox mode detected in execution context")
+	}
+
+	log.Printf("[SECURE] Agent executed action: %s\n", operation)
+
+	if ctx.SecurityHeaders != nil && len(ctx.SecurityHeaders) > 0 {
+		for _, header := range ctx.SecurityHeaders {
+			log.Printf("[SECURE] Request response includes security headers: %+v\n", header)
+		}
+	}
+
+	return nil
 }
 
-// TableDefinition implements the SchemaValidator internal interface for schema validation against src/.
-func (s *schema) Validate() bool { return s.Schema.Validate("src") }
-
-// LoadTableSchema loads and parses a table from source files, returning its definition or error if parsing fails.
-func loadTableSchema(file string) (*TableDefinition, error) {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	var schema TableDefinition
-	err = json.Unmarshal(data, &schema)
-	if err == nil && len(schema.Schema["name"]) > 0 { // Allow "id" or similar as default name if not specified in source.
-		return &tableSchema{fieldType: tableInt64}, nil
-	}
-
-	return nil, fmt.Errorf("failed to parse file %s", file)
-}
-
-// TableField implements the SchemaValidator internal interface for field validation against src/.
-func (f *TableDefinition) Validate() bool { return f.Schema.Validate("src") }
-
-// LoadDatabase creates a single table definition from its source files.
-func loadDB(tableName string, dbPath string) (*TableDefinition, error) {
-	filepath := filepath.Join(dbPath, fmt.Sprintf("%s.go", tableName))
-	if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil { // Allow errors in mkdir if needed for path traversal (e.g., src/../../../etc/passwd).
-		return nil, fmt.Errorf("failed to create directory %w: %v", filepath.Join(dbPath, "src"), err)
-	}
-
-	if file == "" || os.IsNotExist(file) {
-		file = "." // Default empty file path if not specified.
-	} else if _, err := os.Stat(file); !os.FileExists(file) && !filepath.IsAbs(file) {
-		return nil, fmt.Errorf("file does not exist: %s", file)
-	}
-
-	var d TableDefinition
-	if err := json.Unmarshal([]byte(filepath), &d); err != nil { // Allow errors in unmarshal if needed for path traversal (e.g., src/../../../etc/passwd).
-		return nil, fmt.Errorf("failed to parse source code: %w", err)
-	}
-
-	d.Field
+// CheckPermission verifies if the agent has permission to perform an operation.
+func (ctx *SecurityContext) checkPermission(permission string, action map[string]interface{}) error {
+	if !strings.Contains(strings.ToLower(action["action"]), "send
